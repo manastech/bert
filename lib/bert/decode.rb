@@ -37,6 +37,7 @@ module BERT
         when STRING then read_erl_string
         when LIST then read_list
         when BIN then read_bin
+        when SMALL_ATOM_UTF8_EXT then read_small_atom_utf8_ext
         else
           fail("Unknown term tag: #{peek_1}")
       end
@@ -97,6 +98,18 @@ module BERT
       fail("Invalid Type, not an atom") unless read_1 == ATOM
       length = read_2
       a = read_string(length)
+      case a
+        when ""
+          Marshal.load("\004\b:\005") # Workaround for inability to do ''.to_sym
+        else
+          a.to_sym
+      end
+    end
+
+    def read_small_atom_utf8_ext
+      fail("Invalid Type, not an atom") unless read_1 == SMALL_ATOM_UTF8_EXT
+      length = read_1
+      a = String.new(read_string(length), encoding: 'UTF-8')
       case a
         when ""
           Marshal.load("\004\b:\005") # Workaround for inability to do ''.to_sym

@@ -14,9 +14,10 @@
 #define ERL_BIN           109
 #define ERL_SMALL_BIGNUM  110
 #define ERL_LARGE_BIGNUM  111
+#define ERL_SMALL_ATOM_UTF8_EXT 119
 #define ERL_VERSION       131
 
-#define BERT_VALID_TYPE(t) ((t) >= ERL_SMALL_INT && (t) <= ERL_LARGE_BIGNUM)
+#define BERT_VALID_TYPE(t) ((t) >= ERL_SMALL_INT && (t) <= ERL_SMALL_ATOM_UTF8_EXT)
 #define BERT_TYPE_OFFSET (ERL_SMALL_INT)
 
 static VALUE rb_mBERT;
@@ -42,6 +43,7 @@ static VALUE bert_read_list(struct bert_buf *buf);
 static VALUE bert_read_bin(struct bert_buf *buf);
 static VALUE bert_read_sbignum(struct bert_buf *buf);
 static VALUE bert_read_lbignum(struct bert_buf *buf);
+static VALUE bert_read_small_atom_utf8_ext(struct bert_buf *buf);
 
 typedef VALUE (*bert_ptr)(struct bert_buf *buf);
 static bert_ptr bert_callbacks[] = {
@@ -59,7 +61,15 @@ static bert_ptr bert_callbacks[] = {
 	&bert_read_list,
 	&bert_read_bin,
 	&bert_read_sbignum,
-	&bert_read_lbignum
+	&bert_read_lbignum,
+	&bert_read_invalid,
+	&bert_read_invalid,
+	&bert_read_invalid,
+	&bert_read_invalid,
+	&bert_read_invalid,
+	&bert_read_invalid,
+	&bert_read_invalid,
+  &bert_read_small_atom_utf8_ext,
 };
 
 static inline uint8_t bert_buf_read8(struct bert_buf *buf)
@@ -325,6 +335,25 @@ static VALUE bert_read_atom(struct bert_buf *buf)
 	 * unique symbols */
 	bert_buf_ensure(buf, atom_len);
 	rb_atom = rb_str_new((char *)buf->data, atom_len);
+	buf->data += atom_len;
+
+	return rb_str_intern(rb_atom);
+}
+
+static VALUE bert_read_small_atom_utf8_ext(struct bert_buf *buf)
+{
+	VALUE rb_atom;
+	uint8_t atom_len;
+
+	bert_buf_ensure(buf, 1);
+	atom_len = bert_buf_read8(buf);
+
+	/* Instead of trying to build the symbol
+	 * from here, just create a Ruby string
+	 * and internalize it. this will be faster for
+	 * unique symbols */
+	bert_buf_ensure(buf, atom_len);
+	rb_atom = rb_utf8_str_new((char *)buf->data, atom_len);
 	buf->data += atom_len;
 
 	return rb_str_intern(rb_atom);

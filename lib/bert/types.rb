@@ -13,6 +13,7 @@ module BERT
     LIST = 108
     BIN = 109
     FUN = 117
+    SMALL_ATOM_UTF8_EXT = 119
     NEW_FUN = 112
     MAGIC = 131
     MAX_INT = (1 << 27) -1
